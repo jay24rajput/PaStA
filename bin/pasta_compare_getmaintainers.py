@@ -11,8 +11,8 @@ from os.path import join
 from os import chdir, mkdir
 from pathlib import Path
 
+from pypasta import LinuxMailCharacteristics
 from pypasta.LinuxMaintainers import load_maintainers, LinuxSubsystem
-from pypasta.LinuxMailCharacteristics import load_linux_mail_characteristics
 
 log = getLogger(__name__[-15:])
 
@@ -73,9 +73,8 @@ def compare_getmaintainers(config, prog, argv):
         all_message_ids = list(repo.mbox.get_ids(
             time_window=(config.mbox_mindate, config.mbox_maxdate),
             allow_invalid=False))
-        characteristics = load_linux_mail_characteristics(config, None, None, all_message_ids)
         all_message_ids = [x for x in all_message_ids if
-                           characteristics[x].patches_linux]
+                           LinuxMailCharacteristics._patches_linux(repo[x])]
         if bulk is None:
             victims = [random.choice(all_message_ids)]
         else:
@@ -88,7 +87,6 @@ def compare_getmaintainers(config, prog, argv):
     victims = tmp
 
     maintainers_version = load_maintainers(config, victims.keys())
-
     d_tmp = tempfile.mkdtemp()
     try:
         for dir in linux_directory_skeleton:
@@ -115,21 +113,22 @@ def compare_getmaintainers(config, prog, argv):
 
                 chdir(d_tmp)
 
-                pl_output = subprocess.run(
-                    ['perl ' + join(d_tmp, join("scripts", "get_maintainer.pl")) + ' '
-                     + f_message
-                     + ' --subsystem --status --separator \; --nogit --nogit-fallback --roles --norolestats']
-                    , shell=True
-                    , stdout=subprocess.PIPE).stdout.decode("utf-8")
-
-                if pl_output == "":
-                    log.error("perl script did not deliver any sort of output, nothing to compare. Exiting")
+                try:
+                    pl_output = subprocess.run(
+                        ['perl ' + join(d_tmp, join("scripts", "get_maintainer.pl")) + ' '
+                         + f_message
+                         + ' --subsystem --status --separator \; --nogit --nogit-fallback --roles --norolestats '
+                           '--no-remove-duplicates']
+                        , shell=True, check=True
+                        , stdout=subprocess.PIPE).stdout.decode("utf-8")
+                except subprocess.CalledProcessError as grepexc:
+                    log.error("Perl script exited with non-zero exit code %s. Exiting." % grepexc)
                     return
 
                 patch = repo[message_id]
                 subsystems = linux_maintainers.get_subsystems_by_files(patch.diff.affected)
 
-                pasta_maintainers = list()
+                pasta_people = list()
                 pasta_lists = set()
                 for subsystem in subsystems:
                     lists, maintainers, reviewers = linux_maintainers.get_maintainers(subsystem)
@@ -138,11 +137,14 @@ def compare_getmaintainers(config, prog, argv):
 
                     pasta_lists |= lists
 
+                    for reviewer in reviewers:
+                        pasta_people.append((reviewer[1].lower(), "reviewer", subsystem[0:40]))
+
                     for maintainer in maintainers:
                         if len(subsystem_states) != 1:
                             log.error(
                                 "maintainer for subsystem %s had more than one status or none? "
-                                "Lookup message_id %s" (subsystem, message_id))
+                                "Lookup message_id %s" % (subsystem, message_id))
                         elif subsystem_states[0] is LinuxSubsystem.Status.Maintained:
                             status = "maintainer"
                         elif subsystem_states[0] is LinuxSubsystem.Status.Supported:
@@ -150,10 +152,10 @@ def compare_getmaintainers(config, prog, argv):
                         else:
                             status = str(subsystem_states[0])
 
-                        to_be_appended = (maintainer[1].strip().lower(), status, subsystem[0:40])
+                        to_be_appended = (maintainer[1].lower(), status, subsystem[0:40])
 
                         if to_be_appended != linusTorvaldsTuple:
-                            pasta_maintainers.append(to_be_appended)
+                            pasta_people.append(to_be_appended)
 
                 log.info("maintainers successfully retrieved by PaStA")
 
@@ -218,18 +220,18 @@ def compare_getmaintainers(config, prog, argv):
 
                     triple = match.group(1).lower(), match.group(2).lower(), match.group(3)[0:40]
 
-                    if triple in pasta_maintainers:
-                        pasta_maintainers.remove(triple)
+                    if triple in pasta_people:
+                        pasta_people.remove(triple)
                     else:
                         isAccepted = False
                         write_messageid_note(message_id, "Missing entry for people in PaStA")
                         log.warning('People: Missing entry for %s (%s, %s)' % triple)
                         match = False
 
-                if len(pasta_maintainers):
+                if len(pasta_people):
                     isAccepted = False
                     write_messageid_note(message_id, "Too much entries in PaStA for people")
-                    log.warning('People: Too much entries in PaStA: %s' % pasta_maintainers)
+                    log.warning('People: Too much entries in PaStA: %s' % pasta_people)
                     match = False
 
                 if match:

@@ -40,8 +40,10 @@ def repo_get_and_write_file(repo, ref, filename, destination):
     with open(join(destination, filename), "wb") as f:
         f.write(content)
 
-def compare_getmaintainers(config, prog, argv):
-    parser = argparse.ArgumentParser(prog=prog, description='compare PaStA and official get_maintainer')
+
+def compare_getmaintainers(config, argv):
+    parser = argparse.ArgumentParser(prog='compare_getmaintainers',
+                                     description='compare PaStA and official get_maintainer')
     parser.add_argument('--m_id', metavar='m_id', type=str, nargs='+', help="Which message_id\'s to use\n"
                                                                             "Important: see to it that the mailboxes"
                                                                             " affected by the provided id's are "
@@ -158,7 +160,7 @@ def compare_getmaintainers(config, prog, argv):
                     return
 
                 patch = repo[message_id]
-                subsystems = linux_maintainers.get_subsystems_by_files(patch.diff.affected)
+                subsystems = linux_maintainers.get_sections_by_files(patch.diff.affected)
 
                 pasta_people = list()
                 pasta_lists = set()
@@ -177,9 +179,9 @@ def compare_getmaintainers(config, prog, argv):
                             log.error(
                                 "maintainer for subsystem %s had more than one status or none? "
                                 "Lookup message_id %s" % (subsystem, message_id))
-                        elif subsystem_states[0] is LinuxSubsystem.Status.Maintained:
+                        elif subsystem_states[0] is Section.Status.Maintained:
                             status = "maintainer"
-                        elif subsystem_states[0] is LinuxSubsystem.Status.Supported:
+                        elif subsystem_states[0] is Section.Status.Supported:
                             status = "supporter"
                         else:
                             status = str(subsystem_states[0])

@@ -100,6 +100,7 @@ def compare_getmaintainers(config, argv):
 
         accepted = 0
         declined = 0
+        skipped = 0
         for version, message_ids in victims.items():
             # build the structure anew for every different version
             repo_get_and_write_file(repo, version, "MAINTAINERS", d_tmp)
@@ -116,17 +117,17 @@ def compare_getmaintainers(config, argv):
 
                 chdir(d_tmp)
 
-                try:
-                    pl_output = subprocess.run(
-                        ['perl ' + join(d_tmp, join("scripts", "get_maintainer.pl")) + ' '
-                         + f_message
-                         + ' --subsystem --status --separator \; --nogit --nogit-fallback --roles --norolestats '
-                           '--no-remove-duplicates']
-                        , shell=True, check=True
-                        , stdout=subprocess.PIPE).stdout.decode("utf-8")
-                except subprocess.CalledProcessError as grepexc:
-                    log.error("Perl script exited with non-zero exit code %s. Exiting." % grepexc)
-                    return
+                pl = subprocess.Popen(
+                    ['perl ' + join(d_tmp, join("scripts", "get_maintainer.pl")) + ' '
+                     + f_message
+                     + ' --subsystem --status --separator \; --nogit --nogit-fallback --roles --norolestats '
+                       '--no-remove-duplicates']
+                    , shell=True, stdout=subprocess.PIPE)
+
+                pl_output = pl.communicate()[0].decode('utf-8')
+                if pl.returncode != 0:
+                    skipped += 1
+                    continue
 
                 patch = repo[message_id]
                 subsystems = linux_maintainers.get_sections_by_files(patch.diff.affected)
@@ -243,8 +244,8 @@ def compare_getmaintainers(config, argv):
                     accepted += 1
                 else:
                     declined += 1
-        log.info("\nFrom a total of %s message_id\'s:\n%s passed comparison\n%s failed comparison"
-                 % (bulk, accepted, declined))
+        log.info("\nFrom a total of %u message_id\'s:\n%u passed comparison\n%u failed comparison\n%u skipped"
+                 % (bulk, accepted, declined, skipped))
 
 
     finally:

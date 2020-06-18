@@ -75,8 +75,8 @@ def compare_getmaintainers(config, argv):
         all_message_ids = list(repo.mbox.get_ids(
             time_window=(config.mbox_mindate, config.mbox_maxdate),
             allow_invalid=False))
-        #all_message_ids = [x for x in all_message_ids if
-        #                   LinuxMailCharacteristics._patches_linux(repo[x])]
+        all_message_ids = [x for x in all_message_ids if
+                           LinuxMailCharacteristics._patches_linux(repo[x])]
         if bulk is None:
             victims = [random.choice(all_message_ids)]
         else:
@@ -89,37 +89,6 @@ def compare_getmaintainers(config, argv):
     victims = tmp
 
     maintainers_version = load_maintainers(config, victims.keys())
-    # maintainers_version = load_maintainers(config, victims.keys())
-    maintainers_version = load_maintainers(config, {'v5.8-rc1'})
-    test = maintainers_version['v5.8-rc1']
-
-    import pygit2
-    rev_repo = repo.repo.revparse_single('v5.8-rc1')
-    if isinstance(rev_repo, pygit2.Tag):
-        commit = rev_repo.get_object()
-    else:
-        commit = rev_repo
-    tree = commit.tree
-    blob_hash = tree['drivers/net/wireless/quantenna/'].id
-    # blob = repo.repo[blob_hash].data has no attribute data
-
-    # using drivers/net/wireless/quantenna as a reference here: a directory that is listed without / in
-    # QUANTENNA QTNFMAC WIRELESS DRIVER
-    sections = test.get_sections_by_file('drivers/net/wireless/quantenna/Makefile')
-
-    if 'QUANTENNA QTNFMAC WIRELESS DRIVER' not in sections:
-        print('ERROR 1')
-    else:
-        print('SUCCESS 1')
-
-    sections = test.get_sections_by_file('drivers/net/wireless/quantenna')
-
-    if 'QUANTENNA QTNFMAC WIRELESS DRIVER' not in sections:
-        print('ERROR 2')
-    else:
-        print('SUCCESS 2')
-
-    quit()
 
     d_tmp = tempfile.mkdtemp()
     try:

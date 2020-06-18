@@ -153,6 +153,8 @@ def compare_getmaintainers(config, argv):
                             status = "maintainer"
                         elif subsystem_states[0] is Section.Status.Supported:
                             status = "supporter"
+                        elif subsystem_states[0] is Section.Status.OddFixes:
+                            status = "odd fixer"
                         else:
                             status = str(subsystem_states[0])
 
@@ -244,7 +246,7 @@ def compare_getmaintainers(config, argv):
                     accepted += 1
                 else:
                     declined += 1
-        log.info("\nFrom a total of %u message_id\'s:\n%u passed comparison\n%u failed comparison\n%u skipped"
+        log.info("\nFrom a total of %s message_id\'s:\n%u passed comparison\n%u failed comparison\n%u skipped"
                  % (bulk, accepted, declined, skipped))
 
 

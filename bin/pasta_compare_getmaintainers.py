@@ -125,7 +125,7 @@ def compare_getmaintainers(config, argv):
                     , shell=True, stdout=subprocess.PIPE)
 
                 pl_output = pl.communicate()[0].decode('utf-8')
-                if pl.returncode != 0:
+                if pl.returncode != 0 or pl_output == '\n\n':
                     skipped += 1
                     continue
 

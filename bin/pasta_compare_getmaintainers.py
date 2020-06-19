@@ -66,7 +66,7 @@ def compare_getmaintainers(config, argv):
                     f.write('\n' + message_id + " " + string)
 
     linusTorvaldsTuple = (
-        'torvalds@linux-foundation.org', str(Section.Status.Buried), "THE REST")
+        'torvalds@linux-foundation.org', str(Section.Status.Buried))
 
     repo = config.repo
     repo.register_mbox(config)
@@ -132,7 +132,7 @@ def compare_getmaintainers(config, argv):
                 patch = repo[message_id]
                 subsystems = linux_maintainers.get_sections_by_files(patch.diff.affected)
 
-                pasta_people = list()
+                pasta_people = set()
                 pasta_lists = set()
                 for subsystem in subsystems:
                     lists, maintainers, reviewers = linux_maintainers.get_maintainers(subsystem)
@@ -142,7 +142,7 @@ def compare_getmaintainers(config, argv):
                     pasta_lists |= lists
 
                     for reviewer in reviewers:
-                        pasta_people.append((reviewer[1].lower(), "reviewer", subsystem[0:40]))
+                        pasta_people.add((reviewer[1].lower(), "reviewer"))#, subsystem[0:40]))
 
                     for maintainer in maintainers:
                         if len(subsystem_states) != 1:
@@ -158,10 +158,10 @@ def compare_getmaintainers(config, argv):
                         else:
                             status = str(subsystem_states[0])
 
-                        to_be_appended = (maintainer[1].lower(), status, subsystem[0:40])
+                        to_be_appended = (maintainer[1].lower(), status)#, subsystem[0:40])
 
                         if to_be_appended != linusTorvaldsTuple:
-                            pasta_people.append(to_be_appended)
+                            pasta_people.add(to_be_appended)
 
                 log.info("maintainers successfully retrieved by PaStA")
 
@@ -224,14 +224,14 @@ def compare_getmaintainers(config, argv):
                             raise ValueError('regex did not match for person %s from message_id %s'
                                              % (pl_person, message_id))
 
-                    triple = match.group(1).lower(), match.group(2).lower(), match.group(3)[0:40]
+                    triple = match.group(1).lower(), match.group(2).lower() #, match.group(3)[0:40]
 
                     if triple in pasta_people:
                         pasta_people.remove(triple)
                     else:
                         isAccepted = False
                         write_messageid_note(message_id, "Missing entry for people in PaStA")
-                        log.warning('People: Missing entry for %s (%s, %s)' % triple)
+                        log.warning('People: Missing entry for %s (%s)' % triple)
                         match = False
 
                 if len(pasta_people):

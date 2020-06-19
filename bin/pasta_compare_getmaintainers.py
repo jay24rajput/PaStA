@@ -121,7 +121,7 @@ def compare_getmaintainers(config, argv):
                     ['perl ' + join(d_tmp, join("scripts", "get_maintainer.pl")) + ' '
                      + f_message
                      + ' --subsystem --status --separator \; --nogit --nogit-fallback --roles --norolestats '
-                       '--no-remove-duplicates']
+                       '--no-remove-duplicates --no-keywords']
                     , shell=True, stdout=subprocess.PIPE)
 
                 pl_output = pl.communicate()[0].decode('utf-8')
